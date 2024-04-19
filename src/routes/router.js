@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createOrbitDB, IPFSAccessController, Documents } from "@orbitdb/core";
+import { createOrbitDB, IPFSAccessController, Documents, IPFSBlockStorage } from "@orbitdb/core";
 import { bootstrap } from '@libp2p/bootstrap'
 import { gossipsub } from "@chainsafe/libp2p-gossipsub";
 import { identify } from "@libp2p/identify";
@@ -50,34 +50,37 @@ const initIPFSInstance = async (dirLevel, dirBlock) => {
 };
 
 const ipfs1 = await initIPFSInstance("level1", "block1");
-// const ipfs2 = await initIPFSInstance("level2", "block2");
+const ipfs2 = await initIPFSInstance("level2", "block2");
 
 const orbitdb1 = await createOrbitDB({
   ipfs: ipfs1,
   directory: "./src/routes/orbitdb1"
 });
-// const orbitdb2 = await createOrbitDB({
-//   ipfs: ipfs2,
-//   id: "user2",
-//   directory: "./src/routes/orbitdb2",
-// });
+const orbitdb2 = await createOrbitDB({
+  ipfs: ipfs2,
+  directory: "./src/routes/orbitdb2",
+});
 
 const db1 = await orbitdb1.open("my-db", {
   type: "documents", AccessController: IPFSAccessController({ write: ["*"] }),
 });
 
-// const db2 = await orbitdb2.open(db1.address, { AccessController: IPFSAccessController({ write: ['*']})});
-await db1.put({indexCustom:'indexCustom', content:'teste document db'});
+const db2 = await orbitdb2.open(db1.address, {
+  type: "documents", AccessController: IPFSAccessController({ write: ["*"] }),
+});
 
-for await (const record of db1.iterator()) {
+// await db1.put({_id: '10', content:'teste documentid'});
+// await db2.del("indexCustom")
+
+for await (const record of db2.iterator()) {
   console.log(record);
 }
 
 await db1.close()
-// await db2.close()
+await db2.close()
 await orbitdb1.stop()
-// await orbitdb2.stop()
+await orbitdb2.stop()
 await ipfs1.stop()
-// await ipfs2.stop()
+await ipfs2.stop()
 
 export default router;
